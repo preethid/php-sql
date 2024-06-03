@@ -4,6 +4,7 @@ pipeline{
     environment{
         BUILD_SERVER='ec2-user@172.31.40.79'
         IMAGE_NAME='devopstrainer/java-mvn-privaterepos:php$BUILD_NUMBER'
+        DEPLOY_SERVER='ec2-user@172.31.32.130'
     }
 
     stages{
@@ -14,9 +15,24 @@ pipeline{
                     sshagent(['slave2']){
                          withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
                         sh "scp -o StrictHostKeyChecking=no -r build-config ${BUILD_SERVER}:/home/ec2-user"
-                        sh "ssh -o StrictHostKeyChecking=no 'bash /home/ec2-user/build-config/docker-script.sh ${IMAGE_NAME}'"
+                        sh "ssh -o StrictHostKeyChecking=no ${BUILD_SERVER} bash /home/ec2-user/build-config/docker-script.sh ${IMAGE_NAME}"
                         sh "ssh ${BUILD_SERVER} sudo docker login -u $USERNAME -p $PASSWORD"
                          sh "ssh ${BUILD_SERVER} sudo docker push ${IMAGE_NAME}"
+ 
+                    }
+                }
+            }
+        }
+        stage('Deploy container with compose'){
+            agent any
+            steps{
+                script{
+                    sshagent(['slave2']){
+                         withCredentials([usernamePassword(credentialsId: 'docker-hub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                         sh "scp -o StrictHostKeyChecking=no -r deploy-config ${DEPLOY_SERVER}:/home/ec2-user"
+                        sh "ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER} bash '/home/ec2-user/deploy-config/docker-script.sh'"
+                        sh "ssh ${DEPLOY_SERVER} sudo docker login -u $USERNAME -p $PASSWORD"
+                         sh "ssh ${DEPLOY_SERVER} bash /home/ec2-user/deploy-config/compose-script.sh ${IMAGE_NAME}"
  
                     }
                 }
