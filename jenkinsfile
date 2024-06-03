@@ -23,6 +23,7 @@ pipeline{
                 }
             }
         }
+        }
         stage('Deploy container with compose'){
             agent any
             steps{
@@ -40,3 +41,4 @@ pipeline{
         }
     }
 }
+    }
